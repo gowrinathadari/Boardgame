@@ -60,10 +60,9 @@ service:
 ingress:
   enabled: true
   className: ""
-  annotations: {
+  annotations: 
     kubernetes.io/ingress.class: nginx
     cert-manager.io/cluster-issuer: letsencrypt-production
-  }
   hosts:
     - host: boardgame.cloudearn.in
       paths:

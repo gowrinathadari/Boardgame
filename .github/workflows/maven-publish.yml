@@ -22,7 +22,7 @@ jobs:
       uses: aws-actions/amazon-ecr-login@v1
     - name: Build and push Docker image
       env:
-        region: ${{secrets.AWS_REGION}}
+        AWS_REGION:: ${{secrets.AWS_REGION}}
         ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
         IMAGE_TAG: ${{ github.sha }}
       run: |

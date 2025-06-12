@@ -5,7 +5,7 @@
   "requiresCompatibilities": ["FARGATE"],
   "cpu": "512",
   "memory": "1024",
-  "executionRoleArn": "arn:aws:iam::<your-account-id>:role/ecsTaskExecutionRole",
+  "executionRoleArn": "arn:aws:iam::506334646887:role/ecsTaskExecutionRole",
   "containerDefinitions": [
     {
       "name": "ecomm",

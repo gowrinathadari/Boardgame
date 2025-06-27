@@ -8,9 +8,9 @@ env:
   ECR_REPOSITORY: myapp 
 jobs:
   build-test-deploy:
-  name: build & test
-  runs-on: ubuntu-latest
+    name: build & test
+    runs-on: ubuntu-latest
   
-steps:
-  - name: checkout repository
-    uses: actions/checkout@v4
+    steps:
+      - name: checkout repository
+        uses: actions/checkout@v4

@@ -22,3 +22,8 @@ jobs:
     
       - name: build with Maven
         run: mvn package
+      - name: Install Trivy
+        uses: aquasecurity/trivy-action@master
+      - name: Run Trivy scan on workspace
+        run: trivy fs --exit-code 1 --severity HIGH,CRITICAL .
+

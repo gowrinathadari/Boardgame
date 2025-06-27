@@ -1,1 +1,16 @@
+name: CI-CD-to-EKS
 
+on:
+  workflow_dispatch:
+     
+env:
+  AWS_REGION: ap-south-1
+  ECR_REPOSITORY: myapp 
+jobs:
+  build-test-deploy:
+  name: build & test
+  runs-on: ubuntu-latest
+  
+steps:
+  - name: checkout repository
+    uses: actions/checkout@v4

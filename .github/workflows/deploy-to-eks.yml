@@ -42,6 +42,24 @@ jobs:
         run: |
           docker build -t $ECR_REGISTRY/${{ env.ECR_REPOSITORY }}:$IMAGE_TAG .
           docker push $ECR_REGISTRY/${{ env.ECR_REPOSITORY }}:$IMAGE_TAG
+      - name: Install Kubectl
+        uses: aws-actions/setup-kubectl@v3
+        with:
+          version: 'latest'
+      - name: Install Helm
+        run: |
+          curl https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
+        
+      - name: Install aws-iam-authenticator
+        run: |
+          curl -o aws-iam-authenticator https://amazon-eks.s3.us-west-2.amazonaws.com/1.27.10/2024-03-18/bin/linux/amd64/aws-iam-authenticator
+          chmod +x ./aws-iam-authenticator
+          sudo mv aws-iam-authenticator /usr/local/bin/
+      - name: Update kubeconfig
+        run: |
+          aws eks update-kubeconfig --name gowrinath --region ${{ env.AWS_REGION }}
+    
+        
          
 
 

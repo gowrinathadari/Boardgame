@@ -24,7 +24,11 @@ jobs:
         run: mvn package
       - name: Install Trivy
         uses: aquasecurity/trivy-action@master
-      - name: Run Trivy scan on workspace
-        run: trivy fs --scanners vuln --exit-code 0 --severity HIGH,CRITICAL .
+        with:
+          scan-type: fs
+          scan-ref: .
+          severity: HIGH,CRITICAL
+          exit-code: 0
+      
 
 

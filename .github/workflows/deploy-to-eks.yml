@@ -5,7 +5,7 @@ on:
      
 env:
   AWS_REGION: ap-south-1
-  ECR_REPOSITORY: myapp 
+  ECR_REPOSITORY: boardgame
 jobs:
   build-test-deploy:
     name: build & test
@@ -22,13 +22,31 @@ jobs:
     
       - name: build with Maven
         run: mvn package
-      - name: Install Trivy
-        uses: aquasecurity/trivy-action@master
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
         with:
-          scan-type: fs
-          scan-ref: .
-          severity: HIGH,CRITICAL
-          exit-code: 0
-      
+          role-to-assume: arn:aws:iam::506334646887:role/jenkins-role
+          aws-region: ${{ env.AWS_REGION }}
+          
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+      - name: Build, Tag, and Push Docker image to ECR
+        env:
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+          IMAGE_TAG: latest
+        run: |
+          docker build -t $ECR_REGISTRY/${{ env.ECR_REPOSITORY }}:$IMAGE_TAG .
+          docker push $ECR_REGISTRY/${{ env.ECR_REPOSITORY }}:$IMAGE_TAG
+         
+
+
+
+
+
+
+
+
+        
 
 

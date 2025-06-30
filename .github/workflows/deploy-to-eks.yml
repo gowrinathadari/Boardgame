@@ -58,6 +58,9 @@ jobs:
       - name: Update kubeconfig
         run: |
           aws eks update-kubeconfig --name gowrinath --region ${{ env.AWS_REGION }}
+      - name: Deploy to EKS
+        run: |
+          helm upgrade --install boardgame boardgame -f boardgame/values.yaml -n boardgame
     
         
          

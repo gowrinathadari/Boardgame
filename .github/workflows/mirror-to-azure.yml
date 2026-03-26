@@ -1,0 +1,39 @@
+name: Mirror to Azure DevOps
+
+on:
+  push:
+    branches:
+      - '**'        # sync all branches
+
+jobs:
+  mirror:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout full repo
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0        # fetch full history + all branches + tags
+
+      - name: Push to Azure DevOps
+        env:
+          AZURE_DEVOPS_PAT: ${{ secrets.AZURE_DEVOPS_PAT }}
+        run: |
+          # Replace these 4 values with yours
+          AZURE_ORG="y"
+          AZURE_PROJECT="your-project-name"
+          AZURE_REPO="your-repo-name"
+
+          # Encode PAT for HTTPS auth
+          B64_PAT=$(echo -n ":${AZURE_DEVOPS_PAT}" | base64 | tr -d '\n')
+
+          # Add Azure DevOps as remote
+          git remote add azure \
+            https://dev.azure.com/${AZURE_ORG}/${AZURE_PROJECT}/_git/${AZURE_REPO}
+
+          # Inject auth header
+          git config http.extraHeader "Authorization: Basic ${B64_PAT}"
+
+          # Push all branches and tags
+          git push azure --all --force
+          git push azure --tags --force

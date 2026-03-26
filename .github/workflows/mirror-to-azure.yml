@@ -22,7 +22,7 @@ jobs:
           # Replace these 4 values with yours
           AZURE_ORG="devops-gowrinath"
           AZURE_PROJECT="devopsproject"
-          AZURE_REPO="devopsproject"
+          AZURE_REPO="AzureBoardgame"
 
           # Encode PAT for HTTPS auth
           B64_PAT=$(echo -n ":${AZURE_DEVOPS_PAT}" | base64 | tr -d '\n')

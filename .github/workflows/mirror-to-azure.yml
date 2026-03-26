@@ -21,7 +21,7 @@ jobs:
         run: |
           # Replace these 4 values with yours
           AZURE_ORG="devops-gowrinath"
-          AZURE_PROJECT="devopsproject"
+          AZURE_PROJECT="AzureBoardgame"
           AZURE_REPO="AzureBoardgame"
 
           # Encode PAT for HTTPS auth

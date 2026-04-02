@@ -1,77 +1,76 @@
-name: CI-CD-to-EKS
+name: Deploy to ECR & ACR
 
 on:
   workflow_dispatch:
-     
+
 env:
   AWS_REGION: ap-south-1
   ECR_REPOSITORY: boardgame
+
 jobs:
   build-test-deploy:
     name: build & test
     runs-on: ubuntu-latest
 
-    permissions:
-      id-token: write
-      contents: read
-  
     steps:
-      - name: checkout repository
+      # Checkout code
+      - name: Checkout repository
         uses: actions/checkout@v4
-      - name: setup java 17
+
+      # Setup Java
+      - name: Setup Java 17
         uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: 17
-    
-      - name: build with Maven
-        run: mvn package
+
+      # Build JAR
+      - name: Build with Maven
+        run: mvn clean package
+
+      # AWS Login using Access Keys 
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
-          role-to-assume: arn:aws:iam::506334646887:role/github-role
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ env.AWS_REGION }}
-          
+
+      # Login to ECR
       - name: Login to Amazon ECR
         id: login-ecr
         uses: aws-actions/amazon-ecr-login@v2
+
+      # Build & Push to ECR
       - name: Build, Tag, and Push Docker image to ECR
         env:
           ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
-          IMAGE_TAG: latest
+          IMAGE_TAG: ${{ github.sha }}
         run: |
           docker build -t $ECR_REGISTRY/${{ env.ECR_REPOSITORY }}:$IMAGE_TAG .
           docker push $ECR_REGISTRY/${{ env.ECR_REPOSITORY }}:$IMAGE_TAG
-      - name: Install Kubectl
-        uses: azure/setup-kubectl@v4
+
+      # Azure Login
+      - name: Login to Azure
+        uses: azure/login@v1
         with:
-          version: 'latest'
-      - name: Install Helm
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      # Login to ACR
+      - name: Login to ACR
         run: |
-          curl https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
-        
-      - name: Install aws-iam-authenticator
+          az acr login --name ${{ secrets.ACR_NAME }}
+
+      # Tag & Push to ACR
+      - name: Tag and Push Docker image to ACR
+        env:
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+          IMAGE_TAG: ${{ github.sha }}
+          ACR_NAME: ${{ secrets.ACR_NAME }}
         run: |
-          curl -o aws-iam-authenticator https://amazon-eks.s3.us-west-2.amazonaws.com/1.27.10/2024-03-18/bin/linux/amd64/aws-iam-authenticator
-          chmod +x ./aws-iam-authenticator
-          sudo mv aws-iam-authenticator /usr/local/bin/
-      - name: Update kubeconfig
-        run: |
-          aws eks update-kubeconfig --name gowrinath --region ${{ env.AWS_REGION }}
-      - name: Deploy to EKS
-        run: |
-          helm upgrade --install boardgame boardgame -f boardgame/values.yaml -n newgame
-    
-        
-         
+          ACR_LOGIN_SERVER=$ACR_NAME.azurecr.io
 
-
-
-
-
-
-
-
-        
-
-
+          docker tag $ECR_REGISTRY/${{ env.ECR_REPOSITORY }}:$IMAGE_TAG $ACR_LOGIN_SERVER/${{ env.ECR_REPOSITORY }}:$IMAGE_TAG
+          docker push $ACR_LOGIN_SERVER/${{ env.ECR_REPOSITORY }}:$IMAGE_TAG

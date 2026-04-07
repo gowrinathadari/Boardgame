@@ -1,39 +1,107 @@
-name: Mirror to Azure DevOps
+name: Build, Push & Mirror
 
 on:
   push:
     branches:
-      - '**'        # sync all branches
+      - '**'   # all branches
+
+env:
+  IMAGE_NAME: azureboardgame
 
 jobs:
-  mirror:
+  # ──────────────────────────────────────────────
+  # JOB 1 – Build image & push to AWS ECR + Azure ACR
+  # ──────────────────────────────────────────────
+  build-and-push:
     runs-on: ubuntu-latest
 
     steps:
       - name: Checkout full repo
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0        # fetch full history + all branches + tags
+          fetch-depth: 0
 
-      - name: Push to Azure DevOps
-        env:
-          AZURE_DEVOPS_PAT: ${{ secrets.AZURE_DEVOPS_PAT }}
+      - name: Set image tag
+        id: tag
         run: |
-          # Replace these 4 values with yours
-          AZURE_ORG="devops-gowrinath"
-          AZURE_PROJECT="AzureBoardgame"
-          AZURE_REPO="AzureBoardgame"
+          echo "IMAGE_TAG=build-${{ github.run_number }}" >> "$GITHUB_OUTPUT"
 
-          # Encode PAT for HTTPS auth
-          B64_PAT=$(echo -n ":${AZURE_DEVOPS_PAT}" | base64 | tr -d '\n')
+      # ══════════════════════════════════════════
+      #  AWS ECR
+      # ══════════════════════════════════════════
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id:     ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region:            ${{ secrets.AWS_REGION }}
 
-          # Add Azure DevOps as remote
-          git remote add azure \
-            https://dev.azure.com/${AZURE_ORG}/${AZURE_PROJECT}/_git/${AZURE_REPO}
+      - name: Login to Amazon ECR
+        id: ecr-login
+        uses: aws-actions/amazon-ecr-login@v2
 
-          # Inject auth header
-          git config http.extraHeader "Authorization: Basic ${B64_PAT}"
+      - name: Build image
+        run: |
+          docker build -t $IMAGE_NAME:${{ steps.tag.outputs.IMAGE_TAG }} .
 
-          # Push all branches and tags
-          git push azure --all --force
-          git push azure --tags --force
+      - name: Push to ECR
+        env:
+          ECR_REGISTRY: ${{ steps.ecr-login.outputs.registry }}
+        run: |
+          IMAGE_TAG=${{ steps.tag.outputs.IMAGE_TAG }}
+
+          docker tag $IMAGE_NAME:$IMAGE_TAG \
+            $ECR_REGISTRY/$IMAGE_NAME:$IMAGE_TAG
+
+          docker push $ECR_REGISTRY/$IMAGE_NAME:$IMAGE_TAG
+
+      # ══════════════════════════════════════════
+      #  Azure Container Registry (ACR)
+      # ══════════════════════════════════════════
+      - name: Login to Azure ACR
+        uses: azure/docker-login@v2
+        with:
+          login-server: ${{ secrets.ACR_LOGIN_SERVER }}
+          username:     ${{ secrets.ACR_USERNAME }}
+          password:     ${{ secrets.ACR_PASSWORD }}
+
+      - name: Push to ACR
+        run: |
+          IMAGE_TAG=${{ steps.tag.outputs.IMAGE_TAG }}
+          ACR=${{ secrets.ACR_LOGIN_SERVER }}
+
+          docker tag $IMAGE_NAME:$IMAGE_TAG \
+            $ACR/$IMAGE_NAME:$IMAGE_TAG
+
+          docker push $ACR/$IMAGE_NAME:$IMAGE_TAG
+
+  # ──────────────────────────────────────────────
+  # # JOB 2 – Mirror source code to Azure DevOps
+  # # ──────────────────────────────────────────────
+  # mirror:
+  #   runs-on: ubuntu-latest
+  #   needs: build-and-push
+
+  #   steps:
+  #     - name: Checkout full repo
+  #       uses: actions/checkout@v4
+  #       with:
+  #         fetch-depth: 0
+
+  #     - name: Push to Azure DevOps
+  #       env:
+  #         AZURE_DEVOPS_PAT: ${{ secrets.AZURE_DEVOPS_PAT }}
+  #       run: |
+  #         AZURE_ORG="devops-gowrinath"
+  #         AZURE_PROJECT="AzureBoardgame"
+  #         AZURE_REPO="AzureBoardgame"
+
+  #         B64_PAT=$(echo -n ":${AZURE_DEVOPS_PAT}" | base64 | tr -d '\n')
+
+  #         git remote add azure \
+  #           https://dev.azure.com/${AZURE_ORG}/${AZURE_PROJECT}/_git/${AZURE_REPO}
+
+  #         git config http.extraHeader "Authorization: Basic ${B64_PAT}"
+
+  #         git push azure --all --force
+  #         git push azure --tags --force
